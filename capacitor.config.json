@@ -1,0 +1,18 @@
+{
+  "appId": "app.keystep.android",
+  "appName": "Keystep",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0B0C0E",
+    "allowMixedContent": false,
+    "captureInput": true
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

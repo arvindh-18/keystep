@@ -1,0 +1,131 @@
+{
+  "name": "keystep",
+  "version": "1.0.0",
+  "description": "Keystep — MIDI piano practice",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "test": "vitest run",
+    "preview": "vite preview",
+    "electron": "vite build && electron .",
+    "dist:win": "vite build && electron-builder --win --x64",
+    "dist:mac": "vite build && electron-builder --mac",
+    "dist:linux": "vite build && electron-builder --linux",
+    "dist:win:installer": "vite build && electron-builder --win nsis portable --x64 -c.win.signAndEditExecutable=true"
+  },
+  "author": {
+    "name": "Keystep",
+    "email": "hello@keystep.app"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@capacitor/android": "^7.6.10",
+    "@capacitor/core": "^7.6.10",
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "fflate": "^0.8.3",
+    "idb": "^8.0.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.6.10",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.7.0",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
+  },
+  "productName": "Keystep",
+  "private": true,
+  "main": "electron/main.cjs",
+  "homepage": "https://keystep.app",
+  "build": {
+    "appId": "app.keystep.desktop",
+    "productName": "Keystep",
+    "copyright": "Keystep",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "fileAssociations": [
+      {
+        "ext": [
+          "mid",
+          "midi"
+        ],
+        "name": "MIDI File",
+        "description": "MIDI song",
+        "role": "Viewer"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false,
+      "artifactName": "Keystep-${version}-Windows-x64.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Keystep",
+      "artifactName": "Keystep-${version}-Windows-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Keystep-${version}-Windows-Portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "public.app-category.music",
+      "artifactName": "Keystep-${version}-macOS-${arch}.${ext}",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Not used."
+      }
+    },
+    "dmg": {
+      "artifactName": "Keystep-${version}-macOS-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Audio",
+      "icon": "build/icon.png"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keystep/keystep.git"
+  }
+}
