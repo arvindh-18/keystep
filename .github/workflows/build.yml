@@ -1,0 +1,98 @@
+name: Build apps
+
+# Builds the Android APK, Windows apps and macOS apps.
+# Runs on every push to main, on version tags (v1.0.0 creates a GitHub Release), or manually.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm test
+
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: 21 }
+      - uses: android-actions/setup-android@v3
+      - run: npm ci
+      - run: npm run build
+      # Generates the Android project and applies Keystep's native code (native/android).
+      - run: node scripts/prepareAndroid.mjs --fresh
+      # Optional signing with your own key (needed for the Play Store): add repository secrets
+      # ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD.
+      # Without them the APK is signed with a debug key, which installs fine by sideloading.
+      - name: Decode signing key
+        env: { KS: '${{ secrets.ANDROID_KEYSTORE_BASE64 }}' }
+        run: |
+          if [ -n "$KS" ]; then echo "$KS" | base64 -d > "$RUNNER_TEMP/keystep.jks"; echo "KEYSTEP_KEYSTORE=$RUNNER_TEMP/keystep.jks" >> "$GITHUB_ENV"; fi
+      - name: Build APK
+        working-directory: android
+        env:
+          KEYSTEP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEYSTEP_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTEP_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon --stacktrace assembleRelease
+      - run: mkdir -p out && cp android/app/build/outputs/apk/release/app-release.apk out/Keystep-1.0.0-Android.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: Keystep-Android, path: out/*.apk }
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      DEBUG: electron-builder
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build
+      # Portable app (zip): always built.
+      - run: npx electron-builder --win zip --x64 --publish never
+      # Installer + single-file portable .exe (with the Keystep icon embedded).
+      - name: Installer
+        continue-on-error: true
+        run: npx electron-builder --win nsis portable --x64 -c.win.signAndEditExecutable=true --publish never
+      - uses: actions/upload-artifact@v4
+        with: { name: Keystep-Windows, path: "release/*.exe\nrelease/*.zip" }
+
+  macos:
+    needs: test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build
+      # Ad-hoc signed ("-"). To avoid Gatekeeper warnings entirely, use an Apple Developer ID and notarize.
+      - run: npx electron-builder --mac dmg zip --arm64 --x64 -c.mac.identity=- --publish never
+      - uses: actions/upload-artifact@v4
+        with: { name: Keystep-macOS, path: 'release/*.dmg' }
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, windows, macos]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dist-all, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with: { files: 'dist-all/*' }
