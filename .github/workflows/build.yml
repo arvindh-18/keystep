@@ -28,7 +28,11 @@ jobs:
         with: { node-version: 22, cache: npm }
       - uses: actions/setup-java@v5
         with: { distribution: temurin, java-version: 21 }
-      - uses: android-actions/setup-android@v3
+      # The ubuntu runner already ships the Android SDK, so android-actions/setup-android is not needed
+      # (v3 fails with "Failed to find package 'tools'"). Just accept the licenses so Gradle can
+      # auto-download any platform / build-tools it needs.
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
       - run: npm ci
       - run: npm run build
       # Generates the Android project and applies Keystep's native code (native/android).
